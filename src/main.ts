@@ -12,6 +12,17 @@
  * Document your code!
  */
 
+
+/*
+---- step 1: create random number generator for the target. Done
+step 2: animate the target falling down the screen.
+step 3: use keyevents to determine behaviour of the digit toggles
+step 4: make the target disappear when the correct number is entered
+---- step 5: create random number generator for time between target drops. Done
+step 6: figure out how to lower time between target drops as the game progresses
+
+*/
+
 import "./style.css";
 
 import {
@@ -24,6 +35,8 @@ import {
     scan,
     switchMap,
     take,
+    timer,
+    expand
 } from "rxjs";
 
 /** Constants */
@@ -33,11 +46,13 @@ const Viewport = {
     CANVAS_HEIGHT: 400,
 } as const;
 
+// The falling target for the game
 const Target = {
     WIDTH: 64,
     HEIGHT: 36,
 } as const;
 
+// Game constants
 const Constants = {
     DIGIT_COUNT: 8,
     TICK_RATE_MS: 500, // Might need to change this!
@@ -46,10 +61,21 @@ const Constants = {
 // State processing
 type State = Readonly<{
     gameEnd: boolean;
+    targets: ReadonlyArray<FallingTarget>;
+    playerValue: number;
 }>;
 
+type FallingTarget = Readonly<{
+    id: number;
+    value: number;
+    x: number;
+    y: number;
+}>;
+
+// game starts in non-ending state
 const initialState: State = {
     gameEnd: false,
+    target: "0", // Initialize with a default value
 };
 
 /**
@@ -58,7 +84,10 @@ const initialState: State = {
  * @param s Current state
  * @returns Updated state
  */
-const tick = (s: State) => s;
+const tick = (s: State) =>{
+};
+
+
 
 // Rendering (side effects)
 
@@ -86,6 +115,42 @@ const show = (elem: SVGElement): void => {
 const hide = (elem: SVGElement): void => {
     elem.setAttribute("visibility", "hidden");
 };
+
+/**
+ * Creates a random number generator for time between target drops.
+ * 
+ */
+const randomDropInterval = ():number =>
+    // maps interval to a random number between 1000 and 3000
+        Math.floor(Math.random() * 1000)+2000;
+
+
+/**
+ * Creates a random number generator which generates a base 16 number for the target.
+ * 
+ */
+const randomTarget$ = timer(randomDropInterval()) //use timer instead of interval, allows different wait time between each new target.
+    .pipe(
+        expand(() => timer(randomDropInterval())), // continues to call timer
+        // maps interval to a random number between 0 and 255
+        map(() => Math.floor(Math.random() * 256)),
+        // updates the state with the new target value
+        map(value =>(s:State) => ({ ...s,targets:[...s.targets,createTarget(value,s.targets.length)]})),
+    );
+/**
+ * Generate a target
+ * 
+*/
+
+const createTarget = (
+    value: number,
+    id:number,
+): FallingTarget => ({
+    id,
+    value,
+    x: Viewport.CANVAS_WIDTH/2,
+    y:0
+});
 
 /**
  * Creates an SVG element with the given properties.
@@ -134,6 +199,7 @@ const render = (): ((s: State) => void) => {
             stroke: "black",
             "stroke-width": "2",
         });
+        // Draw the number on the target
         const targetText = createSvgElement(svg.namespaceURI, "text", {
             x: `${Viewport.CANVAS_WIDTH / 2}`,
             y: `${40 + Target.HEIGHT / 2 + 8}`,
@@ -141,7 +207,7 @@ const render = (): ((s: State) => void) => {
             "font-family": "monospace",
             fill: "black",
         });
-        targetText.textContent = "13";
+        targetText.textContent = "13"; // hardcoded for now, will be randomised later
         svg.appendChild(target);
         svg.appendChild(targetText);
 
@@ -157,6 +223,8 @@ const render = (): ((s: State) => void) => {
                 stroke: "black",
                 "stroke-width": "2",
             });
+
+            // Draw the number on the digit toggle
             const bitText = createSvgElement(svg.namespaceURI, "text", {
                 x: `${i * digitWidth + digitWidth / 2}`,
                 y: `${Viewport.CANVAS_HEIGHT - 22}`,
