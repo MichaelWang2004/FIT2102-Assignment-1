@@ -84,8 +84,13 @@ const initialState: State = {
  * @param s Current state
  * @returns Updated state
  */
-const tick = (s: State) =>{
-};
+const tick = (s: State) =>({
+    ...s,
+    targets: s.targets.map(target =>{
+        ...target,
+        y: target.y + 2,
+    }),
+});
 
 
 
@@ -135,7 +140,13 @@ const randomTarget$ = timer(randomDropInterval()) //use timer instead of interva
         // maps interval to a random number between 0 and 255
         map(() => Math.floor(Math.random() * 256)),
         // updates the state with the new target value
-        map(value =>(s:State) => ({ ...s,targets:[...s.targets,createTarget(value,s.targets.length)]})),
+        map(value =>(s:State) => ({ 
+            ...s,// only want to map the targets attribute of State
+            targets:[...s.targets, // add a new target to the existing list of targets
+                createTarget(value,s.targets.length)
+            ]
+        }
+    )),
     );
 /**
  * Generate a target
@@ -199,7 +210,6 @@ const render = (): ((s: State) => void) => {
             stroke: "black",
             "stroke-width": "2",
         });
-        // Draw the number on the target
         const targetText = createSvgElement(svg.namespaceURI, "text", {
             x: `${Viewport.CANVAS_WIDTH / 2}`,
             y: `${40 + Target.HEIGHT / 2 + 8}`,
@@ -207,7 +217,7 @@ const render = (): ((s: State) => void) => {
             "font-family": "monospace",
             fill: "black",
         });
-        targetText.textContent = "13"; // hardcoded for now, will be randomised later
+        targetText.textContent = "13";
         svg.appendChild(target);
         svg.appendChild(targetText);
 
@@ -223,8 +233,6 @@ const render = (): ((s: State) => void) => {
                 stroke: "black",
                 "stroke-width": "2",
             });
-
-            // Draw the number on the digit toggle
             const bitText = createSvgElement(svg.namespaceURI, "text", {
                 x: `${i * digitWidth + digitWidth / 2}`,
                 y: `${Viewport.CANVAS_HEIGHT - 22}`,
