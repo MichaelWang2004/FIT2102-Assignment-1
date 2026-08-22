@@ -16,6 +16,8 @@
 /*
 ---- step 1: create random number generator for the target. Done
 step 2: animate the target falling down the screen.
+step 2a: figure out the logic for creating random target values and having multiple targets on the screen at once.
+step 2b: attributing each target to an animated object
 step 3: use keyevents to determine behaviour of the digit toggles
 step 4: make the target disappear when the correct number is entered
 ---- step 5: create random number generator for time between target drops. Done
@@ -36,7 +38,9 @@ import {
     switchMap,
     take,
     timer,
-    expand
+    expand,
+    merge,
+    mergeMap
 } from "rxjs";
 
 /** Constants */
@@ -75,7 +79,8 @@ type FallingTarget = Readonly<{
 // game starts in non-ending state
 const initialState: State = {
     gameEnd: false,
-    target: "0", // Initialize with a default value
+    targets: [], // Initialize with a default value
+    playerValue: 0
 };
 
 /**
@@ -86,10 +91,10 @@ const initialState: State = {
  */
 const tick = (s: State) =>({
     ...s,
-    targets: s.targets.map(target =>{
+    targets: s.targets.map(target =>({
         ...target,
         y: target.y + 2,
-    }),
+    })),
 });
 
 
@@ -148,20 +153,30 @@ const randomTarget$ = timer(randomDropInterval()) //use timer instead of interva
         }
     )),
     );
+
 /**
+ * We dont want our target to always be in the middle of our game
+ * Create random generator for x value of target
+*/
+const randomTargetx = (): number =>
+    Math.random()*Viewport.CANVAS_WIDTH - Target.WIDTH
+
+
+/** 
  * Generate a target
  * 
 */
-
 const createTarget = (
     value: number,
     id:number,
 ): FallingTarget => ({
     id,
     value,
-    x: Viewport.CANVAS_WIDTH/2,
+    x: randomTargetx(),
     y:0
 });
+
+
 
 /**
  * Creates an SVG element with the given properties.
@@ -198,11 +213,14 @@ const render = (): ((s: State) => void) => {
      *
      * @param s Current state
      */
-    return (s: State) => {
+
+    // now creates a new target visual for each target
+    return (s: State) => s.targets.forEach(targetRect => {
         // Draw a static falling target as a demonstration
         const target = createSvgElement(svg.namespaceURI, "rect", {
-            x: `${Viewport.CANVAS_WIDTH / 2 - Target.WIDTH / 2}`,
-            y: "40",
+            id: `target-${targetRect.id}`,
+            x: `${targetRect.x}`,
+            y: `${targetRect.y}`,
             width: `${Target.WIDTH}`,
             height: `${Target.HEIGHT}`,
             rx: "6",
@@ -212,12 +230,12 @@ const render = (): ((s: State) => void) => {
         });
         const targetText = createSvgElement(svg.namespaceURI, "text", {
             x: `${Viewport.CANVAS_WIDTH / 2}`,
-            y: `${40 + Target.HEIGHT / 2 + 8}`,
+            y: `${targetRect.y + Target.HEIGHT / 2 + 8}`,
             "text-anchor": "middle",
             "font-family": "monospace",
             fill: "black",
         });
-        targetText.textContent = "13";
+        targetText.textContent = targetRect.value.toString(16).toUpperCase();
         svg.appendChild(target);
         svg.appendChild(targetText);
 
@@ -244,14 +262,20 @@ const render = (): ((s: State) => void) => {
             svg.appendChild(bit);
             svg.appendChild(bitText);
         });
-    };
+    });
 };
 
 export const state$ = (): Observable<State> => {
     /** Determines the rate of time steps */
-    const tick$ = interval(Constants.TICK_RATE_MS);
+    // replaces what interval outputs with tick function
+    const tick$ = interval(Constants.TICK_RATE_MS).pipe(map(()=>tick));
 
-    return tick$.pipe(scan((s: State) => ({ gameEnd: false }), initialState));
+    return merge(tick$,randomTarget$)
+    .pipe(scan((state, stateUpdate) => 
+        stateUpdate(state),
+        initialState,
+    ),
+);
 };
 
 // The following simply runs your main function on window load.  Make sure to leave it in place.
