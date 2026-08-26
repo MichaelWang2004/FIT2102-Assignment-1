@@ -216,6 +216,17 @@ const render = (): ((s: State) => void) => {
 
     // now creates a new target visual for each target
     return (s: State) => s.targets.forEach(targetRect => {
+        const existingTarget = document.querySelector(
+            `#target-${targetRect.id}`
+        );
+        const existingText = document.querySelector(
+            `#target-text-${targetRect.id}`,
+        );
+        if (existingTarget && existingTarget){
+            existingTarget.setAttribute("y", `${targetRect.y}`);
+            existingText.setAttribute("y",`${targetRect.y + Target.HEIGHT / 2 + 8}`);
+        }
+        else{
         // Draw a static falling target as a demonstration
         const target = createSvgElement(svg.namespaceURI, "rect", {
             id: `target-${targetRect.id}`,
@@ -229,8 +240,9 @@ const render = (): ((s: State) => void) => {
             "stroke-width": "2",
         });
         const targetText = createSvgElement(svg.namespaceURI, "text", {
-            x: `${Viewport.CANVAS_WIDTH / 2}`,
-            y: `${targetRect.y + Target.HEIGHT / 2 + 8}`,
+            id: `target-text-${targetRect.id}`,
+            x: `${targetRect.x + Target.WIDTH/2}`,
+            y: `${targetRect.y + Target.HEIGHT / 2-8}`,
             "text-anchor": "middle",
             "font-family": "monospace",
             fill: "black",
@@ -238,6 +250,7 @@ const render = (): ((s: State) => void) => {
         targetText.textContent = targetRect.value.toString(16).toUpperCase();
         svg.appendChild(target);
         svg.appendChild(targetText);
+        }
 
         // Draw the row of digit toggles as a demonstration
         const digitWidth = Viewport.CANVAS_WIDTH / Constants.DIGIT_COUNT;
