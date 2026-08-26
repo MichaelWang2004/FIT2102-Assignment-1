@@ -66,6 +66,7 @@ const Constants = {
 type State = Readonly<{
     gameEnd: boolean;
     targets: ReadonlyArray<FallingTarget>;
+    digits: ReadonlyArray<number>
     playerValue: number;
 }>;
 
@@ -80,6 +81,7 @@ type FallingTarget = Readonly<{
 const initialState: State = {
     gameEnd: false,
     targets: [], // Initialize with a default value
+    digits: Array(Constants.DIGIT_COUNT).fill(0),
     playerValue: 0
 };
 
@@ -175,6 +177,35 @@ const createTarget = (
     x: randomTargetx(),
     y:0
 });
+
+
+/**Create a function to allow the binary digits at the bottom to be changed.
+ */
+function changeDigit(){
+    // create an observable for keyboard events
+    const keyPress$ = fromEvent<KeyboardEvent>(document, "keydown").pipe(
+        //Filters so that only certain key presses are accepted
+        filter(event =>
+            ["Digit1", "Digit2", "Digit3", "Digit4",
+            "Digit5", "Digit6", "Digit7", "Digit8"]
+                .includes(event.code)// different to event.key instead of representing value of key, it represents position of the key.
+        ),
+        
+        map(event => Number(event.code.replace("Digit", "")) - 1), //converts key name to a number from 0-7, represents index
+
+        map(index => (s: State): State => {
+            const newDigits = s.digits.map((digit, i) => // runs through array
+                i === index ? 1 - digit : digit, // if the index i is the same as our required index, flip digit
+            );
+
+            return {
+                ...s,
+                digits: newDigits,
+            };
+        }),
+    );
+}
+
 
 
 
