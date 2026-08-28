@@ -147,7 +147,7 @@ const randomTarget$ = timer(randomDropInterval()) //use timer instead of interva
         // maps interval to a random number between 0 and 255
         map(() => Math.floor(Math.random() * 256)),
         // updates the state with the new target value
-        map(value =>(s:State) => ({ 
+        map((value)=>(s:State):State => ({ 
             ...s,// only want to map the targets attribute of State
             targets:[...s.targets, // add a new target to the existing list of targets
                 createTarget(value,s.targets.length)
@@ -204,7 +204,8 @@ function changeDigit(){
             };
         }),
     );
-}
+    return keyPress$
+};
 
 
 
@@ -253,7 +254,7 @@ const render = (): ((s: State) => void) => {
         const existingText = document.querySelector(
             `#target-text-${targetRect.id}`,
         );
-        if (existingTarget && existingTarget){
+        if (existingTarget && existingText){
             existingTarget.setAttribute("y", `${targetRect.y}`);
             existingText.setAttribute("y",`${targetRect.y + Target.HEIGHT / 2 + 8}`);
         }
@@ -302,7 +303,7 @@ const render = (): ((s: State) => void) => {
                 "font-family": "monospace",
                 fill: "black",
             });
-            bitText.textContent = "0";
+            bitText.textContent = `${s.digits[i]}`;
             svg.appendChild(bit);
             svg.appendChild(bitText);
         });
@@ -314,7 +315,10 @@ export const state$ = (): Observable<State> => {
     // replaces what interval outputs with tick function
     const tick$ = interval(Constants.TICK_RATE_MS).pipe(map(()=>tick));
 
-    return merge(tick$,randomTarget$)
+    //make a keypress observable
+    const keyPress$ = changeDigit();
+
+    return merge(tick$,randomTarget$,keyPress$)
     .pipe(scan((state, stateUpdate) => 
         stateUpdate(state),
         initialState,
