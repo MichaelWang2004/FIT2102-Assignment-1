@@ -297,6 +297,8 @@ const createSvgElement = (
 };
 
 const render = (): ((s: State) => void) => {
+
+
     const svg = document.querySelector("#svgCanvas") as SVGSVGElement;
 
     svg.setAttribute(
@@ -312,23 +314,47 @@ const render = (): ((s: State) => void) => {
      */
 
     // now creates a new target visual for each target
-    return (s: State) => s.targets.forEach(targetRect => {
-        const existingTarget = document.querySelector(
-            `#target-${targetRect.id}`
+    // remove foreach now because we dont want to print every target
+    return (s: State) =>  {
+        // give target IDs of only targets still in the game
+        const targetIDs = s.targets.map(
+            target => target.id
         );
-        const existingText = document.querySelector(
-            `#target-text-${targetRect.id}`,
-        );
+
+        // remove SVG targets that no longer exit
+        svg.querySelectorAll('[id^="target-"]')
+            .forEach(element => {
+                const id = Number(
+                    element.id
+                        .replace("target-text-", "")
+                        .replace("target-", ""),
+                );
+                if (!targetIDs.includes(id)) {
+                    element.remove();
+                }
+            });
+
+        s.targets.forEach(targetState => {
+        const existingTarget =
+            document.querySelector(
+                `#target-${targetState.id}`,
+            );
+
+        const existingText =
+            document.querySelector(
+                `#target-text-${targetState.id}`,
+            );
+
         if (existingTarget && existingText){
-            existingTarget.setAttribute("y", `${targetRect.y}`);
-            existingText.setAttribute("y",`${targetRect.y + Target.HEIGHT / 2 + 8}`);
+            existingTarget.setAttribute("y", `${targetState.y}`);
+            existingText.setAttribute("y",`${targetState.y + Target.HEIGHT / 2 + 8}`);
         }
         else{
         // Draw a static falling target as a demonstration
         const target = createSvgElement(svg.namespaceURI, "rect", {
-            id: `target-${targetRect.id}`,
-            x: `${targetRect.x}`,
-            y: `${targetRect.y}`,
+            id: `target-${targetState.id}`,
+            x: `${targetState.x}`,
+            y: `${targetState.y}`,
             width: `${Target.WIDTH}`,
             height: `${Target.HEIGHT}`,
             rx: "6",
@@ -336,15 +362,16 @@ const render = (): ((s: State) => void) => {
             stroke: "black",
             "stroke-width": "2",
         });
+
         const targetText = createSvgElement(svg.namespaceURI, "text", {
-            id: `target-text-${targetRect.id}`,
-            x: `${targetRect.x + Target.WIDTH/2}`,
-            y: `${targetRect.y + Target.HEIGHT / 2-8}`,
+            id: `target-text-${targetState.id}`,
+            x: `${targetState.x + Target.WIDTH/2}`,
+            y: `${targetState.y + Target.HEIGHT / 2-8}`,
             "text-anchor": "middle",
             "font-family": "monospace",
             fill: "black",
         });
-        targetText.textContent = targetRect.value.toString(16).toUpperCase();
+        targetText.textContent = targetState.value.toString(16).toUpperCase();
         svg.appendChild(target);
         svg.appendChild(targetText);
         }
@@ -374,7 +401,9 @@ const render = (): ((s: State) => void) => {
             svg.appendChild(bit);
             svg.appendChild(bitText);
         });
+        
     });
+};
 };
 
 export const state$ = (): Observable<State> => {
