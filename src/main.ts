@@ -40,7 +40,7 @@ import {
     timer,
     expand,
     merge,
-    mergeMap
+    mergeMap,
 } from "rxjs";
 
 /** Constants */
@@ -95,7 +95,7 @@ const tick = (s: State) =>({
     ...s,
     targets: s.targets.map(target =>({
         ...target,
-        y: target.y + 0.5,
+        y: target.y + 0.2,
     })),
 });
 
@@ -199,10 +199,11 @@ function keyFlip(){
                 i === index ? 1 - digit : digit, // if the index i is the same as our required index, flip digit
             );
 
-            return {
+            const newState: State = {
                 ...s,
                 digits: newDigits,
             };
+            return checkTarget(newState);
         }),
     );
     return keyPress$
@@ -225,16 +226,54 @@ function clickFlip(){
                 i === index ? 1 - digit : digit,
             );
 
-            return {
+            const newState: State = {
                 ...s,
                 digits: newDigits,
             };
+            return checkTarget(newState);
         }),
     )
 
     return  clickDown$
 };
 
+/*
+coverts the binary digit array into an integer value
+*/
+const digToVal = (digits:ReadonlyArray<number>,):number =>
+    digits.reduce((value, digit) => value*2 + digit, 0);
+
+
+
+/*
+Create a constant to check the values of the targets and compare to our summed binary
+*/
+const checkTarget = (s:State):State =>{
+    if (s.targets.length === 0){
+        return s
+    }
+    // obtain the player binary value
+    const playerValue = digToVal(s.digits);
+
+    // since only the lowest target can be destroyed, we only want the value of said target
+    const lowTarget = s.targets.reduce((lowest,target) =>
+        target.y> lowest.y? target:lowest);
+
+    if (playerValue === lowTarget.value){
+        // remove the target otherwise
+        return {...s,
+            targets: s.targets.filter(
+                target => target.id !== lowTarget.id
+            )
+        };
+    }else{
+        // else do nothing
+        return s;
+    }
+    
+
+
+}
 
 /**
  * Creates an SVG element with the given properties.
