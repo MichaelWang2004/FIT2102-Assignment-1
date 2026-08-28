@@ -59,7 +59,7 @@ const Target = {
 // Game constants
 const Constants = {
     DIGIT_COUNT: 8,
-    TICK_RATE_MS: 500, // Might need to change this!
+    TICK_RATE_MS: 50, // Might need to change this!
 } as const;
 
 // State processing
@@ -95,7 +95,7 @@ const tick = (s: State) =>({
     ...s,
     targets: s.targets.map(target =>({
         ...target,
-        y: target.y + 2,
+        y: target.y + 0.5,
     })),
 });
 
@@ -181,9 +181,10 @@ const createTarget = (
 
 /**Create a function to allow the binary digits at the bottom to be changed.
  */
-function changeDigit(){
+function keyFlip(){
     // create an observable for keyboard events
-    const keyPress$ = fromEvent<KeyboardEvent>(document, "keydown").pipe(
+    const keyPress$ = fromEvent<KeyboardEvent>(document, "keydown")
+    .pipe(
         //Filters so that only certain key presses are accepted
         filter(event =>
             ["Digit1", "Digit2", "Digit3", "Digit4",
@@ -207,7 +208,32 @@ function changeDigit(){
     return keyPress$
 };
 
+function clickFlip(){
+    const clickDown$ = fromEvent<MouseEvent>(document, "mousedown")
+    .pipe(
+        filter(event => {
+            const target = event.target as Element;
 
+            return target.id.startsWith("bit-");
+        }),
+        map(event => {
+            const target = event.target as Element;
+            return Number(target.id.replace("bit-", ""))
+        }),
+        map(index => (s: State): State => {
+            const newDigits = s.digits.map((digit, i) =>
+                i === index ? 1 - digit : digit,
+            );
+
+            return {
+                ...s,
+                digits: newDigits,
+            };
+        }),
+    )
+
+    return  clickDown$
+};
 
 
 /**
@@ -288,6 +314,7 @@ const render = (): ((s: State) => void) => {
         const digitWidth = Viewport.CANVAS_WIDTH / Constants.DIGIT_COUNT;
         Array.from({ length: Constants.DIGIT_COUNT }).forEach((_, i) => {
             const bit = createSvgElement(svg.namespaceURI, "rect", {
+                id:`bit-${i}`,
                 x: `${i * digitWidth + 4}`,
                 y: `${Viewport.CANVAS_HEIGHT - 50}`,
                 width: `${digitWidth - 8}`,
@@ -302,6 +329,7 @@ const render = (): ((s: State) => void) => {
                 "text-anchor": "middle",
                 "font-family": "monospace",
                 fill: "black",
+                "pointer-events": "none",
             });
             bitText.textContent = `${s.digits[i]}`;
             svg.appendChild(bit);
@@ -316,9 +344,10 @@ export const state$ = (): Observable<State> => {
     const tick$ = interval(Constants.TICK_RATE_MS).pipe(map(()=>tick));
 
     //make a keypress observable
-    const keyPress$ = changeDigit();
+    const keyPress$ = keyFlip();
+    const mouseClick$ = clickFlip();
 
-    return merge(tick$,randomTarget$,keyPress$)
+    return merge(tick$,randomTarget$,keyPress$,mouseClick$)
     .pipe(scan((state, stateUpdate) => 
         stateUpdate(state),
         initialState,
