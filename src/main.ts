@@ -297,31 +297,22 @@ const createSvgElement = (
 };
 
 const render = (): ((s: State) => void) => {
-
-
-    const svg = document.querySelector("#svgCanvas") as SVGSVGElement;
+    const svg = document.querySelector(
+        "#svgCanvas",
+    ) as SVGSVGElement;
 
     svg.setAttribute(
         "viewBox",
         `0 0 ${Viewport.CANVAS_WIDTH} ${Viewport.CANVAS_HEIGHT}`,
     );
-    /**
-     * Renders the current state to the canvas.
-     *
-     * In MVC terms, this updates the View using the Model.
-     *
-     * @param s Current state
-     */
 
-    // now creates a new target visual for each target
-    // remove foreach now because we dont want to print every target
-    return (s: State) =>  {
-        // give target IDs of only targets still in the game
+    return (s: State) => {
+        // IDs of targets still in State
         const targetIDs = s.targets.map(
-            target => target.id
+            target => target.id,
         );
 
-        // remove SVG targets that no longer exit
+        // Remove SVG targets that no longer exist in State
         svg.querySelectorAll('[id^="target-"]')
             .forEach(element => {
                 const id = Number(
@@ -329,82 +320,151 @@ const render = (): ((s: State) => void) => {
                         .replace("target-text-", "")
                         .replace("target-", ""),
                 );
+
                 if (!targetIDs.includes(id)) {
                     element.remove();
                 }
             });
 
+        // Create or move each target
         s.targets.forEach(targetState => {
-        const existingTarget =
-            document.querySelector(
-                `#target-${targetState.id}`,
-            );
+            const existingTarget =
+                document.querySelector(
+                    `#target-${targetState.id}`,
+                );
 
-        const existingText =
-            document.querySelector(
-                `#target-text-${targetState.id}`,
-            );
+            const existingText =
+                document.querySelector(
+                    `#target-text-${targetState.id}`,
+                );
 
-        if (existingTarget && existingText){
-            existingTarget.setAttribute("y", `${targetState.y}`);
-            existingText.setAttribute("y",`${targetState.y + Target.HEIGHT / 2 + 8}`);
-        }
-        else{
-        // Draw a static falling target as a demonstration
-        const target = createSvgElement(svg.namespaceURI, "rect", {
-            id: `target-${targetState.id}`,
-            x: `${targetState.x}`,
-            y: `${targetState.y}`,
-            width: `${Target.WIDTH}`,
-            height: `${Target.HEIGHT}`,
-            rx: "6",
-            fill: "white",
-            stroke: "black",
-            "stroke-width": "2",
+            if (existingTarget && existingText) {
+                // Move existing target
+                existingTarget.setAttribute(
+                    "y",
+                    `${targetState.y}`,
+                );
+
+                existingText.setAttribute(
+                    "y",
+                    `${targetState.y + Target.HEIGHT / 2 + 8}`,
+                );
+            } else {
+                // Create new target
+                const target = createSvgElement(
+                    svg.namespaceURI,
+                    "rect",
+                    {
+                        id: `target-${targetState.id}`,
+                        x: `${targetState.x}`,
+                        y: `${targetState.y}`,
+                        width: `${Target.WIDTH}`,
+                        height: `${Target.HEIGHT}`,
+                        rx: "6",
+                        fill: "white",
+                        stroke: "black",
+                        "stroke-width": "2",
+                    },
+                );
+
+                const targetText = createSvgElement(
+                    svg.namespaceURI,
+                    "text",
+                    {
+                        id: `target-text-${targetState.id}`,
+                        x: `${
+                            targetState.x +
+                            Target.WIDTH / 2
+                        }`,
+                        y: `${
+                            targetState.y +
+                            Target.HEIGHT / 2 +
+                            8
+                        }`,
+                        "text-anchor": "middle",
+                        "font-family": "monospace",
+                        fill: "black",
+                    },
+                );
+
+                targetText.textContent =
+                    targetState.value
+                        .toString(16)
+                        .toUpperCase();
+
+                svg.appendChild(target);
+                svg.appendChild(targetText);
+            }
         });
 
-        const targetText = createSvgElement(svg.namespaceURI, "text", {
-            id: `target-text-${targetState.id}`,
-            x: `${targetState.x + Target.WIDTH/2}`,
-            y: `${targetState.y + Target.HEIGHT / 2-8}`,
-            "text-anchor": "middle",
-            "font-family": "monospace",
-            fill: "black",
-        });
-        targetText.textContent = targetState.value.toString(16).toUpperCase();
-        svg.appendChild(target);
-        svg.appendChild(targetText);
-        }
+        // Create/update digit row
+        const digitWidth =
+            Viewport.CANVAS_WIDTH /
+            Constants.DIGIT_COUNT;
 
-        // Draw the row of digit toggles as a demonstration
-        const digitWidth = Viewport.CANVAS_WIDTH / Constants.DIGIT_COUNT;
-        Array.from({ length: Constants.DIGIT_COUNT }).forEach((_, i) => {
-            const bit = createSvgElement(svg.namespaceURI, "rect", {
-                id:`bit-${i}`,
-                x: `${i * digitWidth + 4}`,
-                y: `${Viewport.CANVAS_HEIGHT - 50}`,
-                width: `${digitWidth - 8}`,
-                height: "40",
-                fill: "#ef9a9a",
-                stroke: "black",
-                "stroke-width": "2",
-            });
-            const bitText = createSvgElement(svg.namespaceURI, "text", {
-                x: `${i * digitWidth + digitWidth / 2}`,
-                y: `${Viewport.CANVAS_HEIGHT - 22}`,
-                "text-anchor": "middle",
-                "font-family": "monospace",
-                fill: "black",
-                "pointer-events": "none",
-            });
-            bitText.textContent = `${s.digits[i]}`;
-            svg.appendChild(bit);
-            svg.appendChild(bitText);
+        Array.from({
+            length: Constants.DIGIT_COUNT,
+        }).forEach((_, i) => {
+            const existingBit =
+                document.querySelector(
+                    `#bit-${i}`,
+                );
+
+            const existingBitText =
+                document.querySelector(
+                    `#bit-text-${i}`,
+                );
+
+            if (existingBit && existingBitText) {
+                existingBitText.textContent =
+                    `${s.digits[i]}`;
+            } else {
+                const bit = createSvgElement(
+                    svg.namespaceURI,
+                    "rect",
+                    {
+                        id: `bit-${i}`,
+                        x: `${i * digitWidth + 4}`,
+                        y: `${
+                            Viewport.CANVAS_HEIGHT - 50
+                        }`,
+                        width: `${digitWidth - 8}`,
+                        height: "40",
+                        fill: "#ef9a9a",
+                        stroke: "black",
+                        "stroke-width": "2",
+                    },
+                );
+
+                const bitText = createSvgElement(
+                    svg.namespaceURI,
+                    "text",
+                    {
+                        id: `bit-text-${i}`,
+                        x: `${
+                            i * digitWidth +
+                            digitWidth / 2
+                        }`,
+                        y: `${
+                            Viewport.CANVAS_HEIGHT - 22
+                        }`,
+                        "text-anchor": "middle",
+                        "font-family": "monospace",
+                        fill: "black",
+                        "pointer-events": "none",
+                    },
+                );
+
+                bitText.textContent =
+                    `${s.digits[i]}`;
+
+                svg.appendChild(bit);
+                svg.appendChild(bitText);
+            }
         });
-        
-    });
+    };
 };
-};
+
 
 export const state$ = (): Observable<State> => {
     /** Determines the rate of time steps */
