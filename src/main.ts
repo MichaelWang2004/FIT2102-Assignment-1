@@ -66,8 +66,9 @@ const Constants = {
 type State = Readonly<{
     gameEnd: boolean;
     targets: ReadonlyArray<FallingTarget>;
-    digits: ReadonlyArray<number>
+    digits: ReadonlyArray<number>;
     playerValue: number;
+    score: number
 }>;
 
 type FallingTarget = Readonly<{
@@ -82,7 +83,8 @@ const initialState: State = {
     gameEnd: false,
     targets: [], // Initialize with a default value
     digits: Array(Constants.DIGIT_COUNT).fill(0),
-    playerValue: 0
+    playerValue: 0,
+    score: 0
 };
 
 /**
@@ -249,11 +251,13 @@ const digToVal = (digits:ReadonlyArray<number>,):number =>
 Create a constant to check the values of the targets and compare to our summed binary
 */
 const checkTarget = (s:State):State =>{
+    // obtain the player binary value
+    const playerValue = digToVal(s.digits);
+
+
     if (s.targets.length === 0){
         return s
     }
-    // obtain the player binary value
-    const playerValue = digToVal(s.digits);
 
     // since only the lowest target can be destroyed, we only want the value of said target
     const lowTarget = s.targets.reduce((lowest,target) =>
@@ -262,13 +266,16 @@ const checkTarget = (s:State):State =>{
     if (playerValue === lowTarget.value){
         // remove the target otherwise
         return {...s,
-            targets: s.targets.filter(
-                target => target.id !== lowTarget.id
-            )
+        playerValue,
+        score: s.score+1,
+        targets:s.targets.filter(target => target.id !== lowTarget.id),
         };
     }else{
         // else do nothing
-        return s;
+        return{
+            ...s,
+            playerValue,
+        }
     }
     
 
@@ -298,8 +305,13 @@ const createSvgElement = (
 
 const render = (): ((s: State) => void) => {
     const svg = document.querySelector(
-        "#svgCanvas",
-    ) as SVGSVGElement;
+        "#svgCanvas") as SVGSVGElement;
+
+    const scoreText = document.querySelector(
+        "#scoreText") as HTMLElement;
+
+    const playerValText = document.querySelector(
+        "#playerValText") as HTMLElement;
 
     svg.setAttribute(
         "viewBox",
@@ -307,9 +319,13 @@ const render = (): ((s: State) => void) => {
     );
 
     return (s: State) => {
+
+        scoreText.textContent = `${s.score}`;
+        playerValText.textContent = `${s.playerValue}`;
+
         // IDs of targets still in State
         const targetIDs = s.targets.map(
-            target => target.id,
+            target => target.id
         );
 
         // Remove SVG targets that no longer exist in State
@@ -464,7 +480,6 @@ const render = (): ((s: State) => void) => {
         });
     };
 };
-
 
 export const state$ = (): Observable<State> => {
     /** Determines the rate of time steps */
