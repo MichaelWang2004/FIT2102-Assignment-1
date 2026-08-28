@@ -93,13 +93,27 @@ const initialState: State = {
  * @param s Current state
  * @returns Updated state
  */
-const tick = (s: State) =>({
-    ...s,
-    targets: s.targets.map(target =>({
-        ...target,
-        y: target.y + 0.2,
-    })),
-});
+const tick = (s: State) =>{
+
+    // used to shift targets down by a certain amount per tick
+    const moveTargets = s.targets.map(target =>(
+        {
+            ...target,
+            y: target.y+1
+        }));
+    
+    // used to determine if a target has reached the end
+    const gameEnd = moveTargets.some(
+        target =>
+            target.y >= Viewport.CANVAS_HEIGHT -90
+    );
+
+    return{
+        ...s,
+        targets: moveTargets,
+        gameEnd
+    }
+};
 
 
 
@@ -163,7 +177,7 @@ const randomTarget$ = timer(randomDropInterval()) //use timer instead of interva
  * Create random generator for x value of target
 */
 const randomTargetx = (): number =>
-    Math.random()*Viewport.CANVAS_WIDTH - Target.WIDTH
+        Math.random() * (Viewport.CANVAS_WIDTH - Target.WIDTH);
 
 
 /** 
@@ -267,7 +281,7 @@ const checkTarget = (s:State):State =>{
         // remove the target otherwise
         return {...s,
         playerValue,
-        score: s.score+1,
+        score: s.score+0.25,
         targets:s.targets.filter(target => target.id !== lowTarget.id),
         };
     }else{
@@ -313,15 +327,24 @@ const render = (): ((s: State) => void) => {
     const playerValText = document.querySelector(
         "#playerValText") as HTMLElement;
 
+    const gameOver = document.querySelector(
+        "#gameOver") as SVGElement;
+
     svg.setAttribute(
         "viewBox",
         `0 0 ${Viewport.CANVAS_WIDTH} ${Viewport.CANVAS_HEIGHT}`,
     );
 
     return (s: State) => {
+        // show the gameover screen when you lose the game
+        if (s.gameEnd) {
+            show(gameOver);
+        } else {
+            hide(gameOver);
+        }
 
         scoreText.textContent = `${s.score}`;
-        playerValText.textContent = `${s.playerValue}`;
+        playerValText.textContent = `${(s.playerValue.toString(16).toUpperCase())}`;
 
         // IDs of targets still in State
         const targetIDs = s.targets.map(
@@ -342,8 +365,11 @@ const render = (): ((s: State) => void) => {
                 }
             });
 
-        // Create or move each target
-        s.targets.forEach(targetState => {
+        //sort targets by their y-values before we render them
+        // this means the lower down targets are rendered infront.
+        [...s.targets]
+            .sort((a, b) => a.y - b.y)
+            .forEach(targetState => {
             const existingTarget =
                 document.querySelector(
                     `#target-${targetState.id}`,
