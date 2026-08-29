@@ -41,6 +41,7 @@ import {
     expand,
     merge,
     mergeMap,
+    startWith,
 } from "rxjs";
 
 /** Constants */
@@ -86,6 +87,24 @@ const initialState: State = {
     playerValue: 0,
     score: 0
 };
+
+/**
+ * Copied the random RNG function from applied 4.
+ * A random number generator which provides two pure functions
+ * `hash` and `scale`. Call `hash` repeatedly to generate the
+ * sequence of hashes.
+ */
+abstract class RNG {
+    private static m = 0x80000000; // 2^31
+    private static a = 1103515245;
+    private static c = 12345;
+
+    public static hash = (seed: number): number =>
+        (RNG.a * seed + RNG.c) % RNG.m;
+
+    public static scale = (hash: number): number =>
+        (2 * hash) / (RNG.m - 1) - 1; // in [-1, 1]
+}
 
 /**
  * Updates the state by proceeding with one time step.
@@ -508,19 +527,35 @@ const render = (): ((s: State) => void) => {
 };
 
 export const state$ = (): Observable<State> => {
-    /** Determines the rate of time steps */
-    // replaces what interval outputs with tick function
-    const tick$ = interval(Constants.TICK_RATE_MS).pipe(map(()=>tick));
 
-    //make a keypress observable
-    const keyPress$ = keyFlip();
-    const mouseClick$ = clickFlip();
-
-    return merge(tick$,randomTarget$,keyPress$,mouseClick$)
-    .pipe(scan((state, stateUpdate) => 
-        stateUpdate(state),
-        initialState,
+    const restart$ = fromEvent<KeyboardEvent>(
+        document,
+        "keydown",
+    ).pipe(filter(
+        event => event.code === "KeyR"
     ),
+    startWith(null)
+    );
+
+
+    return restart$.pipe(
+        switchMap(() =>{
+            /** Determines the rate of time steps */
+            // replaces what interval outputs with tick function
+            const tick$ = interval(Constants.TICK_RATE_MS).pipe(map(()=>tick));
+
+            //make a keypress observable
+            const keyPress$ = keyFlip();
+            const mouseClick$ = clickFlip();
+
+
+        return merge(tick$,randomTarget$,keyPress$,mouseClick$)
+        .pipe(scan((state, stateUpdate) => 
+            stateUpdate(state),
+            initialState,
+        ),
+    );
+}),
 );
 };
 
